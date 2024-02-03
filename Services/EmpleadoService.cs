@@ -32,7 +32,8 @@ namespace Prueba_tecnica_mardom_01.Services
             {
                 return false;
             }
-            return await _empleadoRepository.CreateEmployeeAsync(employee);
+            employees.Add(employee);
+            return await _empleadoRepository.CreateEmployeeAsync(employees);
         }
 
         public async Task<List<Empleado>> GetEmployeesAsync()

@@ -6,7 +6,7 @@ namespace Prueba_tecnica_mardom_01.Repositories
     public interface IEmpleadoRepository
     {
         Task<List<Empleado>> GetEmployeesAsync();
-        Task<bool> CreateEmployeeAsync(Empleado empleado);
+        Task<bool> CreateEmployeeAsync(List<Empleado> empleado);
         Task<bool> DeleteEmployeeAsync(string document);
     }
 
@@ -38,7 +38,7 @@ namespace Prueba_tecnica_mardom_01.Repositories
             }
         }
 
-        public async Task<bool> CreateEmployeeAsync(Empleado employee)
+        public async Task<bool> CreateEmployeeAsync(List<Empleado> employee)
         {
             try
             {
