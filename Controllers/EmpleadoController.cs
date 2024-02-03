@@ -1,174 +1,167 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Prueba_tecnica_mardom_01.Models;
-using System.Text.Json;
+using Prueba_tecnica_mardom_01.Services;
 
 
 namespace Prueba_tecnica_mardom_01.Controllers
 {
+    /// <summary>
+    /// This class is the controller for the employee
+    /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/employee")]
     public class EmpleadoController : ControllerBase
     {
-        //Creamos el Path para el archivo txt que contiene la data
-        private readonly string textFilePath = Path.Combine(Directory.GetCurrentDirectory(), "data.txt");
+        private readonly IEmpleadoService _employeeService;
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmpleado()
+        /// <summary>
+        /// This is the constructor of the class
+        /// </summary>
+        /// <param name="employeeService"></param>
+        public EmpleadoController(IEmpleadoService employeeService)
         {
-
-            if (!System.IO.File.Exists(textFilePath))
-            {
-                //Retornamos un NotFound en caso de que el archivo no se encuentre
-                return NotFound("No se encontró el archivo de empleados");
-            }
-
-            //Leemos el archivo y lo almacenamos en una variable
-            var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-
-            //Creamos una lista empleados donde se guardara el JSON una vez deserializado
-            List<Empleado>? empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-
-            //Retornamos un json de empleados
-            return Ok(empleados);
+            _employeeService = employeeService;
         }
 
+        private static List<Empleado> employee = new List<Empleado>();
+
+        /// <summary>
+        /// Get all employees
+        /// </summary>
+        /// <returns>The collection of employees</returns>
         [HttpGet]
-        [Route("SinDuplicados")]
-        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmpleadoWithoutDuplicates()
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Empleado>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmployee()
         {
-            if (!System.IO.File.Exists(textFilePath))
-            {
-                return NotFound("No se encontró el archivo de empleados");
-            }
-
-            var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-            List<Empleado>? empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-
-            //Agrupamos todos los empleados por nombre y apellido y seleccionamos el primero de cada grupo y lo convertimos a una lista
-            empleados = empleados?.GroupBy(e => new { e.Name, e.LastName }).Select(g => g.First()).ToList();
-
-            return Ok(empleados);
+            var employees = await _employeeService.GetEmployeesAsync();
+            return Ok(employees);
         }
-
+        /// <summary>
+        /// Get employee by document
+        /// </summary>
+        /// <param name="document"></param>
+        /// <returns>A employee that matches with the document</returns>
         [HttpGet]
-        [Route("RangoSalarial")]
-        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmpleadoWithSalaryRange(int min = 0, int max = 100000)
+        [Route("find-by-document")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Empleado))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<Empleado>> GetEmployeeFindByDocument(string document)
         {
-            if (!System.IO.File.Exists(textFilePath))
+            try
             {
-                return NotFound("No se encontró el archivo de empleados");
+                var findedEmployee = await _employeeService.GetEmployeeByDocumentAsync(document);
+                return Ok(findedEmployee);
             }
-
-            var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-            List<Empleado>? empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-
-            var empleadosFiltrados = empleados?.Where(e => e.Salary >= min && e.Salary <= max);
-
-            return Ok(empleadosFiltrados);
-        }
-
-        [HttpGet]
-        [Route("AumentoSalarial")]
-        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmpleadoWithSalaryIncrease()
-        { 
-            if (!System.IO.File.Exists(textFilePath))
+            catch (Exception e)
             {
-                return NotFound("No se encontró el archivo de empleados");
+                return NotFound(e.Message);
             }
-
-            var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-            List<Empleado>? empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-
-            var empleadosAumentados = empleados?.Select(e => {
-                if(e.Salary >= 100000){
-                    e.Salary += e.Salary * 0.25;
-                }
-                if(e.Salary <= 100000){
-                    e.Salary += e.Salary * 0.3;
-                }
-                return e;
-            });
-            return Ok(empleadosAumentados);
         }
-
+        /// <summary>
+        /// Get employees without duplicates
+        /// </summary>
+        /// <returns>The collection of employees without duplicates</returns>
         [HttpGet]
-        [Route("PorcentajeGenero")]
-        public async Task<ActionResult<IEnumerable<Empleado>>> GetGenderPercentaje()
+        [Route("without-duplicates")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Empleado>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmployeeWithoutDuplicates()
         {
-            if (!System.IO.File.Exists(textFilePath))
-            {
-                return NotFound("No se encontró el archivo de empleados");
-            }
-
-            var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-            List<Empleado>? empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-
-            var male = empleados?.Count(e => e.Gender == 'M');
-            var female = empleados?.Count(e => e.Gender == 'F');
-
-            return Ok(new { male, female });
+            var employees = await _employeeService.GetEmployeeWithoutDuplicatesAsync();
+            return Ok(employees);
         }
 
+        /// <summary>
+        /// Get employees with salary range
+        /// </summary>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns>The collection of employees between min and max</returns>
+        [HttpGet]
+        [Route("salary-range")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Empleado>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmployeeWithSalaryRange(int min = 0, int max = 100000)
+        {
+            var filteredEmployees = await _employeeService.GetEmployeeWithSalaryRangeAsync(min, max);
+            return Ok(filteredEmployees);
+        }
+        /// <summary>
+        /// Get employees with salary increase
+        /// </summary>
+        /// <returns>The collection of employees with an Salary Increase</returns>
+        [HttpGet]
+        [Route("salary-increase")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Empleado>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<Empleado>>> GetEmployeeWithSalaryIncrease()
+        {
+            var increasedEmployees = await _employeeService.GetEmployeeWithSalaryIncreaseAsync();
+            return Ok(increasedEmployees);
+        }
+        /// <summary>
+        /// Get gender percentage of all employees
+        /// </summary>
+        /// <returns>An object with percentages of males and females</returns>
+        [HttpGet]
+        [Route("gender-percentage")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(object))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetGenderPercentage()
+        {
+            var genderPercentage = await _employeeService.GetGenderPercentageAsync();
+            return Ok(genderPercentage);
+        }
+        /// <summary>
+        /// Create a new employee
+        /// </summary>
+        /// <param name="newEmployee"></param>
+        /// <returns>The new employee</returns>
         [HttpPost]
-        public async Task<ActionResult<Empleado>> CreateEmpleado(Empleado newEmpleado)
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(Empleado))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<Empleado>> CreateEmployee(Empleado newEmployee)
         {
-            if (newEmpleado == null)
+
+            //TODO
+            if (newEmployee == null)
             {
                 return BadRequest("Datos del empleado proporcionados incorrectamente");
             }
 
-            List<Empleado>? empleados = new List<Empleado>();
+            var created = await _employeeService.CreateEmployeeAsync(newEmployee);
 
-            if (System.IO.File.Exists(textFilePath))
+            if (created == false)
             {
-                var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-                empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-            }
-            if (empleados != null && empleados.Any(e => e.Name == newEmpleado.Name && e.LastName == newEmpleado.LastName))
-            {
-                return BadRequest("Ya existe un empleado con el mismo nombre y apellidos");
+                return BadRequest("El empleado ya existe");
             }
 
-            empleados ??= new List<Empleado>(); // Initialize empleados if it is null
-
-            empleados.Add(newEmpleado);
-
-            var jsonEmpleado = JsonSerializer.Serialize(empleados);
-            await System.IO.File.WriteAllTextAsync(textFilePath, jsonEmpleado);
-
-            return CreatedAtAction("Get", new { id = newEmpleado.Document }, newEmpleado);
+            return CreatedAtAction(nameof(GetEmployeeFindByDocument), new { document = newEmployee.Document }, newEmployee);
         }
-
+        /// <summary>
+        ///  Delete an employee
+        /// </summary>
+        /// <param name="document"></param>
+        /// <returns>No content if it deleted</returns>
         [HttpDelete]
-        public async Task<IActionResult> DeleteEmpleado(string document)
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteEmployee(string document)
         {
-            if (document == null)
-            {
-                return BadRequest("Falta proporcionar el documento");
-            }
+            var removed = await _employeeService.DeleteEmployeeAsync(document);
 
-            List<Empleado>? empleados = new List<Empleado>();
-
-            if (!System.IO.File.Exists(textFilePath))
-            {
-                return NotFound("No se encontró el archivo de empleados");
-            }
-
-            var jsonData = await System.IO.File.ReadAllTextAsync(textFilePath);
-            empleados = JsonSerializer.Deserialize<List<Empleado>>(jsonData);
-
-            var empleadoToRemove = empleados?.Find(e => e.Document == document);
-            
-            if (empleadoToRemove == null)
+            if (removed == false)
             {
                 return NotFound("Documento no existente");
             }
-            empleados?.Remove(empleadoToRemove);
-            var jsonEmpleado = JsonSerializer.Serialize(empleados);
-            await System.IO.File.WriteAllTextAsync(textFilePath, jsonEmpleado);
-            
+
             return NoContent();
-            
+
         }
 
     }
