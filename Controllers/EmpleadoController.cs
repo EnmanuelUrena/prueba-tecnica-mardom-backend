@@ -23,8 +23,6 @@ namespace Prueba_tecnica_mardom_01.Controllers
             _employeeService = employeeService;
         }
 
-        private static List<Empleado> employee = new List<Empleado>();
-
         /// <summary>
         /// Get all employees
         /// </summary>
